@@ -45,13 +45,19 @@ def optimize_bare(epochs: int,
                   feed_target: bool = False,
                   basic_stepper=basic_step,
                   training_stepper=training_step,
-                  lr_scheduler = None):
+                  lr_scheduler = None,
+                  show_epoch_bar = False):
 
     losses = []
     bar = utils.tqdm(range(epochs))
 
     for _ in bar:
-        for i, data in enumerate(dl):
+        if show_epoch_bar:
+            epoch_bar = utils.tqdm(enumerate(dl), total=len(dl))
+        else:
+            epoch_bar = enumerate(dl)
+        
+        for i, data in epoch_bar:
             if lr_scheduler is not None:
                 lr_scheduler.step()
             
@@ -71,6 +77,7 @@ def optimize(epochs: int, model: torch.nn.Module, optimizer: torch.optim.Optimiz
              epoch_callback: EpochCallback = None,
              step_callback: StepCallback = None,
              print_results: bool = True,
+             store_pt: bool = True,
              batch_dim: int = 0,
              training_stepper=training_step,
              ittr_limit: int = None,
@@ -95,7 +102,7 @@ def optimize(epochs: int, model: torch.nn.Module, optimizer: torch.optim.Optimiz
 
         if valid_dl is not None:
             eval_data = evaluate(model, loss, valid_dl, batch_dim=batch_dim, 
-                                 callback=step_callback, basic_stepper=basic_stepper)
+                                 callback=step_callback, basic_stepper=basic_stepper, store_pt=store_pt)
        
         if print_results:
             print_info(epoch_ittr.write, train_data, eval_data, metric)
@@ -155,23 +162,30 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, loss: LossCa
 
 @prediction.eval
 def evaluate(model: torch.nn.Module, loss: LossCall, valid_dl: DataLoader, batch_dim: int = 0,
-             callback: StepCallback = None, basic_stepper=basic_step):
+             callback: StepCallback = None, basic_stepper=basic_step, store_pt: bool = False):
 
-    data = {'cost': 0, 'pred': [], 'target': []}
+    if store_pt:
+        data = {'cost': 0, 'pred': [], 'target': []}
+    else:
+        data = {'cost': 0}
     
     def step(x, y, pred, cost, i, steps, bar, model):           
         if callback is not None:
             callback(i, steps, bar, model, x, y, pred, cost)
         
         data['cost'] += cost.item()
-        data['pred'].append(pred.cpu())
-        data['target'].append(y.cpu())
+        
+        if store_pt:
+            data['pred'].append(pred.cpu())
+            data['target'].append(y.cpu())
 
     basic_info_loop(model, loss, valid_dl, step, stepper=basic_stepper)
     
     data["cost"] /= len(valid_dl)
-    data['pred'] = torch.cat(data['pred'], dim=batch_dim)
-    data['target'] = torch.cat(data['target'], dim=batch_dim)
+    
+    if store_pt:
+        data['pred'] = torch.cat(data['pred'], dim=batch_dim)
+        data['target'] = torch.cat(data['target'], dim=batch_dim)
 
     return data
 
