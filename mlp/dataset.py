@@ -35,7 +35,7 @@ class MultiSet(Dataset):
 
 
 class PatchedStrokeDS(Dataset):
-    def __init__(self, stroke, patch_width, mk_source, idx_mapping=None, transform=lambda x:x):
+    def __init__(self, stroke, patch_width, mk_source, idx_mapping=None, transform=lambda x:x, random_patches=True):
         """
         Simple Dataset which takes patches (full height) from a continuous stroke of data.
         
@@ -49,6 +49,7 @@ class PatchedStrokeDS(Dataset):
         self.patch_width = patch_width
         self.mk_source = mk_source
         self.transform = transform
+        self.random_patches = random_patches
         
         if idx_mapping is None:
             idx_mapping = range(data.shape[1] // patch_width - 1)
@@ -57,7 +58,11 @@ class PatchedStrokeDS(Dataset):
     
     def __getitem__(self, index):
         index = self.idx_mapping[index]
-        rnd = np.random.randint(0, self.patch_width)
+        
+        if self.random_patches:
+            rnd = np.random.randint(0, self.patch_width)
+        else:
+            rnd = 0
         
         target = self.stroke[:,:,rnd + self.patch_width * index:rnd + self.patch_width * (index + 1)]
         target = self.transform(target)
@@ -138,6 +143,16 @@ class PolarPreprocessing:
             return freqs
         else:
             return freqs[0]
+        
+        
+class TimePostprocessing:
+    def __init__(self, fs, nperseg):
+        self.fs = fs
+        self.nperseg = nperseg
+        
+    def __call__(self, polar):
+        freqs = WAVAudioDS.torch_to_freqs(polar)
+        return audio.istft(freqs, fs)[1]
         
 
 class Pipeline:
