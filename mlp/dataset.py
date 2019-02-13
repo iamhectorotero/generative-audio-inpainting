@@ -54,7 +54,7 @@ class PatchedStrokeDS(Dataset):
     
     
 class WAVAudioDS(PatchedStrokeDS):
-    def __init__(self, files, transformation, preprocess, patch_width, nperseg = 256):
+    def __init__(self, files, transformation, preprocess, patch_width, proc_pool, nperseg = 256):
         """
         Reads all audio files, applies a sftf and combines the result into one continous stroke of which patches are returned with width patch_width
         
@@ -64,20 +64,15 @@ class WAVAudioDS(PatchedStrokeDS):
         @param patch_width: the width of the patches that are returned
         @param nperseg: param used for the stft
         """
-        file_data = []
-        idx_mapping = []
-        i = 0
         
-        for file in tqdm(files):
-            self.fs, audio_time = audio.read_monaural_wav(file)
-            audio_freqs = preprocess(audio.stft(audio_time, self.fs, nperseg=nperseg)[2])
-                
-            if audio_freqs is not None:
-                file_data.append(audio_freqs)
-                idx_mapping.extend(range(i + len(idx_mapping), i + len(idx_mapping) + audio_freqs.shape[2] // patch_width - 1))
-                i += 1
+        freq_data = proc_pool.map(Pipeline(preprocess, nperseg), tqdm(files))
+        freq_data = list(filter(lambda x: x is not None, freq_data))
+        idx_mapping = []
+        
+        for i, audio_freqs in enumerate(freq_data): 
+            idx_mapping.extend(range(i + len(idx_mapping), i + len(idx_mapping) + audio_freqs.shape[-1] // patch_width - 1))
                     
-        super(WAVAudioDS, self).__init__(torch.cat(file_data, dim=2), patch_width, transformation, idx_mapping)
+        super(WAVAudioDS, self).__init__(torch.cat(freq_data, dim=-1), patch_width, transformation, idx_mapping)
         
     @staticmethod
     def freqs_to_torch(freqs, max_freqs):
@@ -92,24 +87,43 @@ class WAVAudioDS(PatchedStrokeDS):
 
         return zeros
         
-    @staticmethod
-    def polar_preprocessing(norm_mag, norm_phase, patch_width, max_freqs=64):
-        def preprocess(freqs):
-            freqs = audio.cutout_slient(freqs, min_width=patch_width)
-            
-            if freqs is None:
-                return None
-            
-            mod = freqs.shape[1] % patch_width
-            
-            if mod is not 0: 
-                freqs = freqs[:,:-mod]
-            
-            freqs = WAVAudioDS.freqs_to_torch(freqs, max_freqs)
-
-            freqs[0], freqs[1] = complx.to_polar(freqs)
-            freqs[0], freqs[1] = norm_mag(freqs[0]), norm_phase(freqs[1])
-
-            return freqs
         
-        return preprocess
+class PolarPreprocessing:
+    def __init__(self, norm_mag, norm_phase, patch_width, include_phase = True, max_freqs=64):
+        self.norm_mag = norm_mag
+        self.norm_phase = norm_phase
+        self.patch_width = patch_width
+        self.max_freqs = max_freqs
+        self.include_phase = include_phase
+    
+    def __call__(self, freqs):
+        freqs = audio.cutout_slient(freqs, min_width=self.patch_width)
+           
+        if freqs is None:
+            return None
+            
+        mod = freqs.shape[1] % self.patch_width
+            
+        if mod is not 0: 
+            freqs = freqs[:,:-mod]
+            
+        freqs = WAVAudioDS.freqs_to_torch(freqs, self.max_freqs)
+
+        freqs[0], freqs[1] = complx.to_polar(freqs)
+        freqs[0], freqs[1] = self.norm_mag(freqs[0]), self.norm_phase(freqs[1])
+
+        if self.include_phase:
+            return freqs
+        else:
+            return freqs[0]
+        
+
+class Pipeline:
+    def __init__(self, preprocess, nperseg=256):
+        self.nperseg = 256
+        self.preprocess = preprocess
+        
+    def __call__(self, file):
+        fs, audio_time = audio.read_monaural_wav(file)
+        _, _, freqs = audio.stft(audio_time, fs, self.nperseg) 
+        return self.preprocess(freqs)
