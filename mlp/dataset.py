@@ -16,6 +16,8 @@ from . import utils
 
 from itertools import accumulate
 
+from .normalization import denorm_polar
+
 
 class MultiSet(Dataset):
     def __init__(self, sets):
@@ -146,13 +148,12 @@ class PolarPreprocessing:
         
         
 class TimePostprocessing:
-    def __init__(self, fs, nperseg):
+    def __init__(self, fs):
         self.fs = fs
-        self.nperseg = nperseg
         
     def __call__(self, polar):
-        freqs = WAVAudioDS.torch_to_freqs(polar)
-        return audio.istft(freqs, fs)[1]
+        freqs = WAVAudioDS.torch_to_freqs(polar, denorm_polar)
+        return audio.istft(freqs, self.fs)[1]
         
 
 class Pipeline:
