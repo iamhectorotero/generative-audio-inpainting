@@ -23,3 +23,11 @@ def build_stroke_purge_mask(patch_width, patch_height, ms, fs, nperseg=256):
     mask[:,:, left_offset:left_offset + pixels] = 0
     
     return mask
+
+
+def acc_to_idx(acc, value):
+    for i, v in enumerate(acc):
+        if value < v:
+            return i
+        
+    return len(acc) - 1

@@ -56,4 +56,3 @@ def cutout_slient(freqs, cutoff=25, min_width=128):
             return None
             
     return freqs[:,start:end]
-
