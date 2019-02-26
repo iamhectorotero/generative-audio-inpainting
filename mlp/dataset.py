@@ -83,7 +83,7 @@ class PatchedStrokeDS(Dataset):
     
     
 class WAVAudioDS(PatchedStrokeDS):
-    def __init__(self, files, mk_source, preprocess, patch_width, proc_pool, transform = lambda x:x, nperseg = 256):
+    def __init__(self, files, mk_source, preprocess, patch_width, proc_pool, transform = lambda x:x, nperseg = 256, random_patches=True):
         """
         Reads all audio files, applies a sftf and combines the result into one continous stroke of which patches are returned with width patch_width
         
@@ -101,7 +101,7 @@ class WAVAudioDS(PatchedStrokeDS):
         for i, audio_freqs in enumerate(freq_data): 
             idx_mapping.extend(range(i + len(idx_mapping), i + len(idx_mapping) + audio_freqs.shape[-1] // patch_width - 1))
                     
-        super(WAVAudioDS, self).__init__(torch.cat(freq_data, dim=-1), patch_width, mk_source, idx_mapping, transform)
+        super(WAVAudioDS, self).__init__(torch.cat(freq_data, dim=-1), patch_width, mk_source, idx_mapping, transform, random_patches=random_patches)
         
     @staticmethod
     def freqs_to_torch(freqs, max_freqs):
