@@ -86,15 +86,14 @@ print("Loading dataset")
 with Pool(8) as p:
     train_dss = []
     
-    #for i in range(9):
-    #    train_dss.append(WAVAudioDS(files_train[i*4000:(i+1)*4000], lambda x: x * purge_mask, preprocess, patch_width, p))
+    for i in range(9):
+        train_dss.append(WAVAudioDS(files_train[i*4000:(i+1)*4000], lambda x: x * purge_mask, preprocess, patch_width, p))
 
-    #ds_train = MultiSet(train_dss)
+    ds_train = MultiSet(train_dss)
     ds_test = WAVAudioDS(files_valid, lambda x: x * purge_mask, preprocess, patch_width, p, random_patches=False)
 
-#dl_train = DataLoader(ds_train, batch_size=bs, num_workers=8, shuffle=True)
+dl_train = DataLoader(ds_train, batch_size=bs, num_workers=8, shuffle=True)
 dl_test = DataLoader(ds_test, batch_size=bs, num_workers=8, shuffle=False)
-dl_train = dl_test
 
 mse = torch.nn.MSELoss()
 
