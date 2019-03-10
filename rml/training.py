@@ -83,7 +83,8 @@ def optimize(epochs: int, model: torch.nn.Module, optimizer: torch.optim.Optimiz
              ittr_limit: int = None,
              lr_scheduler = None,
              epoch_save_path: str = None,
-             basic_stepper = basic_step):
+             basic_stepper = basic_step,
+             no_epoch_info_bar = False):
 
     epoch_ittr = utils.tqdm(range(epochs))
     data = {"train": [], "test": []}
@@ -97,12 +98,13 @@ def optimize(epochs: int, model: torch.nn.Module, optimizer: torch.optim.Optimiz
         train_data = train(model, optimizer, loss, train_dl, feed_target,
                            callback=step_callback, stepper=training_stepper, 
                            basic_stepper=basic_stepper, ittr_limit=ittr_limit, 
-                           lr_scheduler=lr_scheduler)
+                           lr_scheduler=lr_scheduler, headless=no_epoch_info_bar)
         eval_data = None
 
         if valid_dl is not None:
             eval_data = evaluate(model, loss, valid_dl, batch_dim=batch_dim, 
-                                 callback=step_callback, basic_stepper=basic_stepper, store_pt=store_pt)
+                                 callback=step_callback, basic_stepper=basic_stepper, 
+                                 store_pt=store_pt, headless=no_epoch_info_bar)
        
         if print_results:
             print_info(epoch_ittr.write, train_data, eval_data, metric)
@@ -137,7 +139,8 @@ def print_info(write_fn: Callable[[str], None],
 
 def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, loss: LossCall,
           train_dl: DataLoader, feed_target: bool = False, callback: StepCallback = None, 
-          stepper=training_step, basic_stepper=basic_step, ittr_limit: int = None, lr_scheduler = None):
+          stepper=training_step, basic_stepper=basic_step, ittr_limit: int = None, 
+          lr_scheduler = None, headless = False):
 
     if lr_scheduler is not None:
         data = {'cost': [], 'lrs': []}
@@ -155,14 +158,14 @@ def train(model: torch.nn.Module, optimizer: torch.optim.Optimizer, loss: LossCa
 
         stepper(cost, optimizer)
 
-    basic_info_loop(model, loss, train_dl, step, feed_target=feed_target, stepper=basic_stepper, ittr_limit=ittr_limit, lr_scheduler=lr_scheduler)
+    basic_info_loop(model, loss, train_dl, step, feed_target=feed_target, stepper=basic_stepper, ittr_limit=ittr_limit, lr_scheduler=lr_scheduler, headless=headless)
         
     return data
 
 
 @prediction.eval
 def evaluate(model: torch.nn.Module, loss: LossCall, valid_dl: DataLoader, batch_dim: int = 0,
-             callback: StepCallback = None, basic_stepper=basic_step, store_pt: bool = False):
+             callback: StepCallback = None, basic_stepper=basic_step, store_pt: bool = False, headless=False):
 
     if store_pt:
         data = {'cost': 0, 'pred': [], 'target': []}
@@ -179,7 +182,7 @@ def evaluate(model: torch.nn.Module, loss: LossCall, valid_dl: DataLoader, batch
             data['pred'].append(pred.cpu())
             data['target'].append(y.cpu())
 
-    basic_info_loop(model, loss, valid_dl, step, stepper=basic_stepper)
+    basic_info_loop(model, loss, valid_dl, step, stepper=basic_stepper, headless=headless)
     
     data["cost"] /= len(valid_dl)
     
@@ -199,7 +202,8 @@ def basic_info_loop(model: torch.nn.Module,
                     feed_target: bool = False,
                     stepper=basic_step,
                     ittr_limit=None,
-                    lr_scheduler=None):
+                    lr_scheduler=None,
+                    headless=False):
 
     steps = len(dl)
 
@@ -214,7 +218,7 @@ def basic_info_loop(model: torch.nn.Module,
     moving_av_cost = 0
     exp_weighted_cost = 0 
     
-    bar = utils.tqdm(enumerate(dl), total=steps)
+    bar = enumerate(dl) if headless else utils.tqdm(enumerate(dl), total=steps)
 
     for i, data in bar:
         if lr_scheduler is not None:
@@ -222,16 +226,17 @@ def basic_info_loop(model: torch.nn.Module,
             
         cost, input, target, pred = stepper(model, data, loss, feed_target)
 
-        exp_weighted_cost = (1 - exp_cost_factor) * exp_weighted_cost + exp_cost_factor * cost.item()
-        moving_av_cost += cost.item()
+        if not headless:
+            exp_weighted_cost = (1 - exp_cost_factor) * exp_weighted_cost + exp_cost_factor * cost.item()
+            moving_av_cost += cost.item()
 
-        bias_correction = 1 - (1 - exp_cost_factor) ** (i + 1)
+            bias_correction = 1 - (1 - exp_cost_factor) ** (i + 1)
 
-        bar.set_postfix({
-            'cost': round(cost.item(), 4),
-            'avg_cost': round(moving_av_cost / (i + 1), 4),
-            'exp_cost': round(exp_weighted_cost / bias_correction, 4)
-        })
+            bar.set_postfix({
+                'cost': round(cost.item(), 4),
+                'avg_cost': round(moving_av_cost / (i + 1), 4),
+                'exp_cost': round(exp_weighted_cost / bias_correction, 4)
+            })
 
         step(input, target, pred, cost, i, steps, bar, model)
         
