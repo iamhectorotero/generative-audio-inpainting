@@ -8,15 +8,13 @@ import pickle as pk
 import torch
 from torch.utils.data import Dataset
 
-from tqdm import tqdm_notebook as tqdm
+from tqdm import tqdm
 
 from . import audio
 from . import complx
 from . import utils
 
 from itertools import accumulate
-
-from .normalization import denorm_polar
 
 
 class MultiSet(Dataset):
@@ -83,7 +81,7 @@ class PatchedStrokeDS(Dataset):
     
     
 class WAVAudioDS(PatchedStrokeDS):
-    def __init__(self, files, mk_source, preprocess, patch_width, proc_pool, transform = lambda x:x, nperseg = 256, random_patches=True):
+    def __init__(self, files, mk_source, preprocess, patch_width, proc_pool, transform = lambda x:x, nperseg = 256, random_patches = True):
         """
         Reads all audio files, applies a sftf and combines the result into one continous stroke of which patches are returned with width patch_width
         
@@ -118,7 +116,7 @@ class WAVAudioDS(PatchedStrokeDS):
         
         
 class PolarPreprocessing:
-    def __init__(self, norm_mag, norm_phase, patch_width, include_phase = True, max_freqs=64):
+    def __init__(self, norm_mag, norm_phase, patch_width, max_freqs=64, include_phase = True):
         self.norm_mag = norm_mag
         self.norm_phase = norm_phase
         self.patch_width = patch_width
@@ -139,21 +137,23 @@ class PolarPreprocessing:
         freqs = WAVAudioDS.freqs_to_torch(freqs, self.max_freqs)
 
         freqs[0], freqs[1] = complx.to_polar(freqs)
-        freqs[0], freqs[1] = self.norm_mag(freqs[0]), self.norm_phase(freqs[1])
 
         if self.include_phase:
+            freqs[0], freqs[1] = self.norm_mag(freqs[0]), self.norm_phase(freqs[1])
             return freqs
         else:
-            return freqs[0]
+            freqs[0] = self.norm_mag(freqs[0])
+            return freqs[0:1]
         
         
 class TimePostprocessing:
-    def __init__(self, fs):
+    def __init__(self, fs, nperseg):
         self.fs = fs
+        self.nperseg = nperseg
         
     def __call__(self, polar):
-        freqs = WAVAudioDS.torch_to_freqs(polar, denorm_polar)
-        return audio.istft(freqs, self.fs)[1]
+        freqs = WAVAudioDS.torch_to_freqs(polar)
+        return audio.istft(freqs, fs)[1]
         
 
 class Pipeline:
