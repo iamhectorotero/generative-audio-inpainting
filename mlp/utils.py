@@ -6,7 +6,7 @@ import torch
 
 from itertools import accumulate
 from functools import reduce
-
+import numpy as np
 
 def get_all_files(root):
     if os.path.isfile(root):
@@ -24,6 +24,17 @@ def build_stroke_purge_mask(patch_width, patch_height, ms, fs, nperseg=256, chan
     
     return mask
 
+def build_time_purge_mask(patch_width, ms, fs):
+    px_to_ms = lambda px: round(px * 2.667)
+    
+    sample_ms = math.floor(ms * fs / 1000)
+    sample_length = math.floor(px_to_ms(patch_width) * fs / 1000)
+    gap_start = sample_length // 2 - sample_ms // 2
+    
+    mask = np.ones(sample_length)
+    mask[gap_start:gap_start + sample_ms] = 0
+    
+    return mask
 
 def acc_to_idx(acc, value):
     for i, v in enumerate(acc):
