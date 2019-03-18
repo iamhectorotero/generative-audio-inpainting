@@ -108,7 +108,7 @@ class Discriminator(nn.Module):
 
         def discriminator_block(in_filters, out_filters, normalization=True):
             """Returns downsampling layers of each discriminator block"""
-            layers = [nn.Conv2d(in_filters, out_filters, 4, stride=2, padding=1)]
+            layers = [nn.Conv2d(in_filters, out_filters, 4, stride=2, padding=0)]
             if normalization:
                 layers.append(nn.InstanceNorm2d(out_filters))
             layers.append(nn.LeakyReLU(0.2, inplace=True))
@@ -117,10 +117,9 @@ class Discriminator(nn.Module):
         self.model = nn.Sequential(
             *discriminator_block(in_channels*2, 64, normalization=False),
             *discriminator_block(64, 128),
-            *discriminator_block(128, 256),
-            *discriminator_block(256, 512),
-            nn.ZeroPad2d((1, 0, 1, 0)),
-            nn.Conv2d(512, 1, 4, padding=1, bias=False)
+            *discriminator_block(128, 512),
+            nn.Conv2d(512, 1, kernel_size=3, stride=1, padding=0, bias=False)
+            #nn.Sigmoid()
         )
 
     def forward(self, img_A, img_B):
