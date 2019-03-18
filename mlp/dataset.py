@@ -185,12 +185,9 @@ class WAVTimeAudioDS(PatchedStrokeDS):
         time_data = list(filter(lambda x: x is not None, time_data))
         idx_mapping = []
 
-        print(gap_width)
         for i, audio_time in enumerate(time_data): 
             idx_mapping.extend(range(i + len(idx_mapping), i + len(idx_mapping) + len(audio_time) // gap_width - 1))
-            
-        # print(len(idx_mapping))        
-                    
+                                
         super(WAVTimeAudioDS, self).__init__(np.concatenate(time_data), gap_width, mk_source, idx_mapping, transform, random_patches=random_patches)    
 
 class TimePipeline:
@@ -199,5 +196,10 @@ class TimePipeline:
         self.preprocess = preprocess
     def __call__(self, file):
         fs, audio_time = audio.read_monaural_wav(file)
+        
+        _, _, freqs = audio.stft(audio_time, fs, self.nperseg) 
+        if self.preprocess(freqs) is None:
+            return None
+        
         return audio_time
 
