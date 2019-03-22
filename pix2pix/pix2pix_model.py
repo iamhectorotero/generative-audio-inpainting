@@ -119,7 +119,6 @@ class Discriminator(nn.Module):
             *discriminator_block(64, 128),
             *discriminator_block(128, 512),
             nn.Conv2d(512, 1, kernel_size=3, stride=1, padding=0, bias=False)
-            #nn.Sigmoid()
         )
 
     def forward(self, img_A, img_B):
