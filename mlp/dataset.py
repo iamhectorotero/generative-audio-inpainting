@@ -64,7 +64,7 @@ class PatchedStrokeDS(Dataset):
         else:
             rnd = 0
         
-        target = self.stroke[:,:,rnd + self.patch_width * index:rnd + self.patch_width * (index + 1)]
+        target = self.stroke[...,rnd + self.patch_width * index:rnd + self.patch_width * (index + 1)]
         target = self.transform(target)
             
         return self.mk_source(target), target
@@ -165,3 +165,41 @@ class Pipeline:
         fs, audio_time = audio.read_monaural_wav(file)
         _, _, freqs = audio.stft(audio_time, fs, self.nperseg) 
         return self.preprocess(freqs)
+    
+    
+class WAVTimeAudioDS(PatchedStrokeDS):
+    def __init__(self, files, mk_source, patch_width, proc_pool, fs, preprocess=None, transform = lambda x:x, random_patches = True):
+        """
+        Reads all audio files, applies a sftf and combines the result into one continous stroke of which patches are returned with width patch_width
+        
+        @param files: the audio files to load
+        @param transformation: a transformation to apply to the patches before they are returned (the original is returned as well)
+        @param preprocess: preprocessing step applied to the frequency data of the audio, this should cast the data to Tensors at the very least
+        @param patch_width: the width of the patches that are returned
+        @param nperseg: param used for the stft
+        """
+        px_to_ms = lambda px: round(px * 2.667)
+        gap_width = int(np.floor(px_to_ms(patch_width) * fs / 1000))
+        
+        time_data = proc_pool.map(TimePipeline(preprocess), tqdm(files))
+        time_data = list(filter(lambda x: x is not None, time_data))
+        idx_mapping = []
+
+        for i, audio_time in enumerate(time_data): 
+            idx_mapping.extend(range(i + len(idx_mapping), i + len(idx_mapping) + len(audio_time) // gap_width - 1))
+                                
+        super(WAVTimeAudioDS, self).__init__(np.concatenate(time_data), gap_width, mk_source, idx_mapping, transform, random_patches=random_patches)    
+
+class TimePipeline:
+    def __init__(self, preprocess=None):
+        self.nperseg = 256
+        self.preprocess = preprocess
+    def __call__(self, file):
+        fs, audio_time = audio.read_monaural_wav(file)
+        
+        _, _, freqs = audio.stft(audio_time, fs, self.nperseg) 
+        if self.preprocess(freqs) is None:
+            return None
+        
+        return audio_time
+
