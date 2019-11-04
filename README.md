@@ -5,7 +5,10 @@ This project tackled the task of audio inpainting (reconstructing missing sample
 # Results
 Examples from the reconstructions obtained can be seen below:
 
-
+Target | Source | c-GAN | U-Net | LPC | Interp
+:--------:|:---:|:-----:|:-----:|:---:|:-------------:
+![](images/reconst/101_orig.png) | ![](images/reconst/101_gap.png) | ![](images/reconst/101_gan.png) | ![](images/reconst/101_dnn.png) | ![](images/reconst/101_lpc.png) | ![](images/reconst/101_interp.png)
+![](images/reconst/166_orig.png) | ![](images/reconst/166_gap.png) | ![](images/reconst/166_gan.png) | ![](images/reconst/166_dnn.png) | ![](images/reconst/166_lpc.png) | ![](images/reconst/166_interp.png)
 
 # Data Processing
 
