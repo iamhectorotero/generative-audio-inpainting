@@ -16,8 +16,8 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torch.autograd import Variable
 
-from pix2pix.pix2pix_model import *
-from unet.unet.unet_parts import *
+from models.pix2pix_model import *
+from models.unet_parts import *
 from mlp import audio
 from mlp import normalization
 from mlp import utils as mlp
