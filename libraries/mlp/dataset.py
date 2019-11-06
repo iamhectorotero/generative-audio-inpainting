@@ -10,9 +10,9 @@ from torch.utils.data import Dataset
 
 from tqdm import tqdm
 
-from . import audio
-from . import complx
-from . import utils
+from .audio import cutout_slient, istft, stft, read_monaural_wav
+from .complx import to_polar
+# from .utils
 
 from itertools import accumulate
 
@@ -124,20 +124,21 @@ class PolarPreprocessing:
         self.include_phase = include_phase
     
     def __call__(self, freqs):
-        freqs = audio.cutout_slient(freqs, min_width=self.patch_width)
+        
+        freqs = cutout_slient(freqs, min_width=self.patch_width)
            
         if freqs is None:
             return None
             
         mod = freqs.shape[1] % self.patch_width
-            
+                
         if mod is not 0: 
             freqs = freqs[:,:-mod]
-            
+                
         freqs = WAVAudioDS.freqs_to_torch(freqs, self.max_freqs)
-
-        freqs[0], freqs[1] = complx.to_polar(freqs)
-
+         
+        freqs[0], freqs[1] = to_polar(freqs)
+        
         if self.include_phase:
             freqs[0], freqs[1] = self.norm_mag(freqs[0]), self.norm_phase(freqs[1])
             return freqs
@@ -153,7 +154,7 @@ class TimePostprocessing:
         
     def __call__(self, polar):
         freqs = WAVAudioDS.torch_to_freqs(polar)
-        return audio.istft(freqs, fs)[1]
+        return istft(freqs, fs)[1]
         
 
 class Pipeline:
@@ -162,8 +163,9 @@ class Pipeline:
         self.preprocess = preprocess
         
     def __call__(self, file):
-        fs, audio_time = audio.read_monaural_wav(file)
-        _, _, freqs = audio.stft(audio_time, fs, self.nperseg) 
+        fs, audio_time = read_monaural_wav(file)
+        _, _, freqs = stft(audio_time, fs, self.nperseg) 
+
         return self.preprocess(freqs)
     
     
