@@ -2,6 +2,8 @@
 
 This project tackled the task of audio inpainting (reconstructing missing samples) for speech data. We evaluated how good deep learning approaches were at reconstructing missing audio segments in the frequency domain. In particular, two architectures were tested: U-Net (an encoder-decoder architecture) and Pix2Pix (a c-GAN, conditional Generative Adversarial Network). These methods were compared to more traditional approaches, such as Linear Predictive Coding, and shown to not only provide competitive results but also to generate sharper reconstructions that closely approximate the missing target. Finally, we also investigated the effect of varying the amount of missing audio data and size of the available context on the quality of the reconstruction.
 
+*For a more detailed description of the work done, you can read our report [HERE](./generative_audio_inpainting_report.pdf).*
+
 # Results
 Examples from the reconstructions obtained can be seen below:
 
