@@ -19,7 +19,7 @@ from mlp import normalization
 from mlp import utils as mlp
 from mlp.dataset import WAVAudioDS, PolarPreprocessing, Pipeline, MultiSet
 
-from unet.unet.unet_parts import *
+from models.unet import *
 
 
 class UNet(nn.Module):
@@ -57,8 +57,8 @@ stroke_width = int(sys.argv[1])
 patch_width = int(sys.argv[2])
 patch_height = 64
 
-files_train = pk.load(open("train.pk", "rb"))
-files_valid = pk.load(open("valid.pk", "rb"))
+files_train = pk.load(open("../files/train.pk", "rb"))
+files_valid = pk.load(open("../files/valid.pk", "rb"))
 
 device = utils.utils.device
 
