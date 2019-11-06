@@ -195,11 +195,22 @@ class TimePipeline:
         self.nperseg = 256
         self.preprocess = preprocess
     def __call__(self, file):
-        fs, audio_time = audio.read_monaural_wav(file)
+        fs, audio_time = read_monaural_wav(file)
         
-        _, _, freqs = audio.stft(audio_time, fs, self.nperseg) 
+        _, _, freqs = stft(audio_time, fs, self.nperseg) 
         if self.preprocess(freqs) is None:
             return None
         
         return audio_time
-
+    
+    
+def torch_out_to_time_domain(t, fs=48000, patch_width=64, nprseg=256):
+    freqs = np.zeros((len(t), 129, 64), dtype=np.complex64)
+    for i in tqdm(range(len(t))):
+        freqs[i] = WAVAudioDS.torch_to_freqs(t[i])
+    
+    audio = np.zeros((len(t), int(patch_width * ((nprseg/2)-2))))
+    for i in tqdm(range(len(t))):
+        audio[i] = istft(freqs[i], fs)[1]
+        
+    return audio

@@ -7,7 +7,6 @@ import numpy as np
 import IPython.display as ipd
 
 from tqdm import tqdm
-from .dataset import WAVAudioDS
 
 def read_monaural_wav(path):
     fs, audio_time = wav.read(path)
@@ -58,15 +57,3 @@ def cutout_slient(freqs, cutoff=25, min_width=128):
             return None
             
     return freqs[:,start:end]
-
-
-def torch_out_to_time_domain(t, fs=48000, patch_width=64, nprseg=256):
-    freqs = np.zeros((len(t), 129, 64), dtype=np.complex64)
-    for i in tqdm(range(len(t))):
-        freqs[i] = WAVAudioDS.torch_to_freqs(t[i])
-    
-    audio = np.zeros((len(t), int(patch_width * ((nprseg/2)-2))))
-    for i in tqdm(range(len(t))):
-        audio[i] = istft(freqs[i], fs)[1]
-        
-    return audio
