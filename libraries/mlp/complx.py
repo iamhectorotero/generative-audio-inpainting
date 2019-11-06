@@ -3,12 +3,14 @@ import numpy as np
 
 
 def to_polar(complx):
-    magnitude = torch.norm(complx, dim=0)
+    
+    magnitude = (complx[0] ** 2 + complx[1] ** 2)**0.5
+    # magnitude = torch.norm(complx, dim=0)
     phase = torch.atan(complx[1] / complx[0])
     
     phase[complx[0] < 0] = phase[complx[0] < 0] + np.pi
     phase = phase - np.pi/2
-    
+
     return magnitude, phase
     
     

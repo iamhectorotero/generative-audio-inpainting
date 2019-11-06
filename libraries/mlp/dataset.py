@@ -103,7 +103,7 @@ class WAVAudioDS(PatchedStrokeDS):
         
     @staticmethod
     def freqs_to_torch(freqs, max_freqs):
-        return torch.from_numpy(freqs.view(np.float32).reshape(129, 2, -1)[:max_freqs].transpose(1, 0, 2))
+        return torch.from_numpy(freqs.reshape(129, 2, -1)[:max_freqs].transpose(1, 0, 2).astype(np.float32))
         
     @staticmethod
     def torch_to_freqs(audio_freqs, denorm=lambda x:x):
